@@ -1,24 +1,27 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Text;
 
 class Program
 {
     static string diaryFilePath = "diary.txt";
     static string userFilePath = "users.txt";
     static string? currentUser = null;
+    static string favoritesFilePath = "favorites.txt"; 
 
     static void Main()
     {
         EnsureFileExists(diaryFilePath);
         EnsureFileExists(userFilePath);
+        EnsureFileExists(favoritesFilePath);
 
         while (true)
         {
-            Console.WriteLine("Welcome to the Diary App!");
+            PrintTitle("Welcome to the Diary App!📔");
             Console.WriteLine("1. Login");
             Console.WriteLine("2. Register");
-            Console.Write("Enter your choice: ");
+            Console.Write("\nEnter your choice: ");
             string? choice = Console.ReadLine();
 
             if (choice == "1")
@@ -38,12 +41,14 @@ class Program
 
         while (true)
         {
-            Console.WriteLine("\nDiary Menu:");
+            Console.WriteLine();
+            PrintTitle("Diary Menu");
             Console.WriteLine("1. Write Entry");
             Console.WriteLine("2. View All Entries");
             Console.WriteLine("3. Search by Date");
-            Console.WriteLine("4. Logout");
-            Console.Write("Enter your choice: ");
+            Console.WriteLine("4. Favorites");
+            Console.WriteLine("5. Logout");
+            Console.Write("\nEnter your choice: ");
             string? menuChoice = Console.ReadLine();
 
             switch (menuChoice)
@@ -58,6 +63,9 @@ class Program
                     SearchDate();
                     break;
                 case "4":
+                    Favorites();
+                    break;
+                case "5":
                     Console.WriteLine("Logged out.");
                     return;
                 default:
@@ -74,10 +82,23 @@ class Program
             File.Create(path).Close();
         }
     }
+    static void PrintTitle(string title)
+    {
+        Console.OutputEncoding = Encoding.UTF8;
+        int width = title.Length + 10;
+        string top = "╔" + new string('═', width) + "╗";
+        string middle = "║" + new string(' ', (width - title.Length) / 2) + title + new string(' ', (width - title.Length + 1) / 2) + "║";
+        string bottom = "╚" + new string('═', width) + "╝";
 
+        Console.WriteLine(top);
+        Console.WriteLine(middle);
+        Console.WriteLine(bottom);
+    }
     static void Register()
     {
-        Console.Write("Enter a new username: ");
+        Console.WriteLine();
+        PrintTitle("Regitster ✏️");
+        Console.Write("\nEnter a new username: ");
         string? username = Console.ReadLine();
         Console.Write("Enter a new password: ");
         string? password = Console.ReadLine();
@@ -100,6 +121,8 @@ class Program
 
     static bool Login()
     {
+        Console.WriteLine();
+        PrintTitle("Login ✏️");
         Console.Write("Username: ");
         string? username = Console.ReadLine();
         Console.Write("Password: ");
@@ -123,7 +146,8 @@ class Program
 
     static void WriteEntry()
     {
-        Console.WriteLine("Write your entry:");
+        Console.WriteLine();
+        PrintTitle("Write your entry✍️");
         string? input = Console.ReadLine();
 
         if (string.IsNullOrWhiteSpace(input))
@@ -135,7 +159,136 @@ class Program
         Console.WriteLine("Entry added.");
     }
 
-    static void ViewEntry(){}
+    static void ViewEntry(){
+        EnsureFileExists(diaryFilePath);
+        string[] lines = File.ReadAllLines(diaryFilePath);
 
-    static void SearchDate(){}
+        Console.WriteLine();
+        if (lines.Length == 0)
+        {
+            Console.WriteLine("Nothing to see here.");
+        }
+
+        PrintTitle($"{currentUser}'s Diary Entries 📔");
+        Console.WriteLine();
+
+        bool hasEntries = false;
+        for (int i = 0; i < lines.Length; i++) {
+            if (lines[i].StartsWith($"[{currentUser}]")) { 
+                hasEntries = true;
+                while (i < lines.Length && lines[i] != "----------")
+                {
+                    Console.WriteLine(lines[i]);
+                    i++;
+                }
+                Console.WriteLine("---\n");
+            }
+        }
+
+        if (!hasEntries) {
+            Console.WriteLine("Nothing to see here.");
+        }
+
+    }
+
+    static void SearchDate() { }
+    static void Favorites()
+    {
+        string favFile = $"{currentUser}_favorites.txt";
+        EnsureFileExists(favFile);
+
+        string[] favorites = File.ReadAllLines(favFile);
+
+        Console.WriteLine();
+        PrintTitle($"{currentUser}'s Favorite Entries 💗");
+        Console.WriteLine();
+
+        if (favorites.Length == 0)
+        {
+            Console.WriteLine("You have no favorite entries yet.\n");
+        }
+        else
+        {
+            for (int i = 0; i < favorites.Length; i++)
+            {
+                Console.WriteLine(favorites[i]);
+            }
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("1. Add a favorite entry");
+        Console.WriteLine("2. Return");
+        Console.Write("\nEnter your choice: ");
+        string? choice = Console.ReadLine();
+
+        if (choice == "1")
+        {
+            AddToFavorites();
+        }
+    }
+
+    static void AddToFavorites()
+    {
+        List<string> lines = new List<string>(File.ReadAllLines(diaryFilePath));
+        List<string> userEntries = new List<string>();
+        List<string> userTimestamps = new List<string>();
+        
+        Console.WriteLine();
+        PrintTitle("Add a favorite diary entry 💗");
+        Console.WriteLine();
+
+        for (int i = 0; i < lines.Count; i++)
+        {
+            if (lines[i].StartsWith($"[{currentUser}]"))
+            {
+                string timestamp = lines[i];
+                string entryContent = "";
+                i++; 
+
+                while (i < lines.Count && lines[i] != "----------")
+                {
+                    entryContent += lines[i] + "\n";
+                    i++;
+                }
+
+                userTimestamps.Add(timestamp);
+                userEntries.Add(entryContent.Trim());
+            }
+        }
+
+        if (userEntries.Count == 0)
+        {
+            Console.WriteLine("\nYou have no diary entries to favorite.");
+            return;
+        }
+
+        for (int i = 0; i < userEntries.Count; i++)
+        {
+            string ts = userTimestamps[i];
+            string timestamp = ts.Contains("]") ? ts.Substring(ts.IndexOf("]") + 1).Trim() : "Unknown Date";
+            Console.WriteLine($"\nDiary Entry #{i + 1} ({timestamp}):");
+            Console.WriteLine(userEntries[i]);
+        }
+
+        Console.Write("\nEnter the number(s) of the diary entry you want to favorite (comma-separated): ");
+        string? input = Console.ReadLine();
+        Console.WriteLine();
+
+        if (string.IsNullOrWhiteSpace(input)) return;
+
+        string[] selections = input.Split(',');
+        foreach (string sel in selections)
+        {
+            if (int.TryParse(sel.Trim(), out int index) && index >= 1 && index <= userEntries.Count)
+            {
+                string favoriteEntry = $"{userTimestamps[index - 1]}\n{userEntries[index - 1]}\n---\n";
+                File.AppendAllText($"{currentUser}_favorites.txt", favoriteEntry);
+                Console.WriteLine($"Diary Entry #{index} added to favorites.");
+            }
+            else
+            {
+                Console.WriteLine($"Invalid entry number: {sel}");
+            }
+        }
+    }
 }
