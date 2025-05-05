@@ -184,7 +184,7 @@ Digital Diary/
 
 ---
 
-## 📸 Sample Output
+## Sample Output
 
 ```
 ╔════════════════════════════════╗
@@ -218,7 +218,7 @@ Login successful!
 
 ---
 
-## 👨‍👩‍👧‍👦 Team Members
+## 🧑‍💻 Team Members
 
 * **De Castro, Ayelet Darcy**
   - Email: [23-01387@g.batstate-u.edu.ph](mailto:23-01387@g.batstate-u.edu.ph)
