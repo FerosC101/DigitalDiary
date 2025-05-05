@@ -1,18 +1,19 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Linq;
 
 class Program
 {
-    static string diaryFilePath = "diary.txt";
+    static string filePath = "diary.txt";
     static string userFilePath = "users.txt";
     static string? currentUser = null;
 
     static void Main()
     {
-        EnsureFileExists(diaryFilePath);
-        EnsureFileExists(userFilePath);
-
+        EnsureFileExists();
+        EnsureUserFileExists();
+        
         while (true)
         {
             Console.WriteLine("Welcome to the Diary App!");
@@ -35,18 +36,20 @@ class Program
                 Console.WriteLine("Invalid choice.\n");
             }
         }
-
-        while (true)
+        
+        while (true) 
         {
-            Console.WriteLine("\nDiary Menu:");
+            Console.WriteLine("\nDiary Menu: ");
             Console.WriteLine("1. Write Entry");
-            Console.WriteLine("2. View All Entries");
+            Console.WriteLine("2. View all entries");
             Console.WriteLine("3. Search by Date");
-            Console.WriteLine("4. Logout");
+            Console.WriteLine("4. Edit Entry");
+            Console.WriteLine("5. Delete Entry");
+            Console.WriteLine("6. Exit");
             Console.Write("Enter your choice: ");
-            string? menuChoice = Console.ReadLine();
+            string? choice = Console.ReadLine();
 
-            switch (menuChoice)
+            switch (choice)
             {
                 case "1":
                     WriteEntry();
@@ -58,23 +61,37 @@ class Program
                     SearchDate();
                     break;
                 case "4":
-                    Console.WriteLine("Logged out.");
-                    return;
+                    EditEntry();
+                    break;
+                case "5":
+                    DeleteEntry();
+                    break;
+                case "6":    
+                    Environment.Exit(0);
+                    break;
                 default:
                     Console.WriteLine("Invalid choice");
-                    break;
+                    break;  
             }
         }
     }
 
-    static void EnsureFileExists(string path)
+    static void EnsureFileExists()
     {
-        if (!File.Exists(path))
+        if (!File.Exists(filePath))
         {
-            File.Create(path).Close();
+            File.Create(filePath).Close();
         }
     }
-
+    
+    static void EnsureUserFileExists()
+    {
+        if (!File.Exists(userFilePath))
+        {
+            File.Create(userFilePath).Close();
+        }
+    }
+    
     static void Register()
     {
         Console.Write("Enter a new username: ");
@@ -123,19 +140,204 @@ class Program
 
     static void WriteEntry()
     {
-        Console.WriteLine("Write your entry:");
-        string? input = Console.ReadLine();
+        Console.WriteLine("\nWrite your entry (press Enter twice to finish):");
+        string input = "";
+        string line;
+        
+        while (!string.IsNullOrWhiteSpace(line = Console.ReadLine()))
+        {
+            input += line + "\n";
+        }
 
         if (string.IsNullOrWhiteSpace(input))
+        {
+            Console.WriteLine("No entry was added.");
             return;
-        
+        }
+
         string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-        string entry = $"[{currentUser}] {timestamp}\n{input}\n---\n";
-        File.AppendAllText(diaryFilePath, entry);
-        Console.WriteLine("Entry added.");
+        File.AppendAllText(filePath, $"[ENTRY]\nUser:{currentUser}\n{timestamp}\n{input}\n");
+        Console.WriteLine("Entry added successfully.");
     }
 
-    static void ViewEntry(){}
+    static void ViewEntry()
+    {
+        Console.WriteLine();
+    }
 
-    static void SearchDate(){}
+    static void SearchDate()
+    {
+        Console.Write("\nEnter date to search (yyyy-MM-dd or yyyy-MM): ");
+        string searchTerm = Console.ReadLine();
+
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            Console.WriteLine("Invalid date format.");
+            return;
+        }
+
+        bool found = false;
+        string[] allEntries = File.ReadAllText(filePath).Split(new[] {"[ENTRY]"}, StringSplitOptions.RemoveEmptyEntries);
+
+        Console.WriteLine($"\nSearch Results for '{searchTerm}':");
+        Console.WriteLine("--------------------------------");
+
+        foreach (string entry in allEntries)
+        {
+            string[] entryParts = entry.Trim().Split('\n');
+            if (entryParts.Length >= 2 && entryParts[0] == $"User:{currentUser}" && entryParts[1].Contains(searchTerm))
+            {
+                found = true;
+                Console.WriteLine($"\nDate: {entryParts[1]}");
+                Console.WriteLine("Content:");
+                Console.WriteLine(string.Join("\n", entryParts.Skip(2)));
+            }
+        }
+
+        if (!found)
+        {
+            Console.WriteLine("No entries found for the specified date.");
+        }
+    }
+
+    static void EditEntry()
+    {
+        string[] allEntries = File.ReadAllText(filePath).Split(new[] {"[ENTRY]"}, StringSplitOptions.RemoveEmptyEntries);
+        var userEntries = new List<string>();
+        var entryNumbers = new List<int>();
+
+        
+        for (int i = 0; i < allEntries.Length; i++)
+        {
+            string[] entryParts = allEntries[i].Trim().Split('\n');
+            if (entryParts.Length >= 1 && entryParts[0] == $"User:{currentUser}")
+            {
+                userEntries.Add(allEntries[i]);
+                entryNumbers.Add(i + 1); 
+            }
+        }
+
+        if (userEntries.Count == 0)
+        {
+            Console.WriteLine("No entries found for the current user.");
+            return;
+        }
+        
+        for (int i = 0; i < userEntries.Count; i++)
+        {
+            string[] entryParts = userEntries[i].Trim().Split('\n');
+            Console.WriteLine($"\nEntry #{entryNumbers[i]}");
+            Console.WriteLine($"Date: {entryParts[1]}");
+            Console.WriteLine("Content:");
+            Console.WriteLine(string.Join("\n", entryParts.Skip(2)));
+        }
+
+        Console.Write("\nEnter the number of the entry you want to edit: ");
+        if (!int.TryParse(Console.ReadLine(), out int selectedNumber) || !entryNumbers.Contains(selectedNumber))
+        {
+            Console.WriteLine("Invalid entry number.");
+            return;
+        }
+
+        int actualIndex = Array.IndexOf(entryNumbers.ToArray(), selectedNumber);
+        string[] selectedEntryParts = userEntries[actualIndex].Trim().Split('\n');
+
+        Console.WriteLine("\nCurrent entry:");
+        Console.WriteLine($"Date: {selectedEntryParts[1]}");
+        Console.WriteLine("Current content:");
+        Console.WriteLine(string.Join("\n", selectedEntryParts.Skip(2)));
+
+        Console.WriteLine("\nEnter new content (press Enter twice to finish):");
+        string newContent = "";
+        string line;
+        
+        while (!string.IsNullOrWhiteSpace(line = Console.ReadLine()))
+        {
+            newContent += line + "\n";
+        }
+
+        if (string.IsNullOrWhiteSpace(newContent))
+        {
+            Console.WriteLine("No changes were made.");
+            return;
+        }
+        
+        int originalIndex = entryNumbers[actualIndex] - 1;
+        allEntries[originalIndex] = $"\nUser:{currentUser}\n{selectedEntryParts[1]}\n{newContent}";
+        
+        File.WriteAllText(filePath, string.Join("[ENTRY]", allEntries));
+        Console.WriteLine("Entry updated successfully.");
+    }
+
+    static void DeleteEntry()
+    {
+        string[] allEntries = File.ReadAllText(filePath).Split(new[] {"[ENTRY]"}, StringSplitOptions.RemoveEmptyEntries);
+        var userEntries = new List<string>();
+        var entryNumbers = new List<int>();
+        
+        for (int i = 0; i < allEntries.Length; i++)
+        {
+            string[] entryParts = allEntries[i].Trim().Split('\n');
+            if (entryParts.Length >= 1 && entryParts[0] == $"User:{currentUser}")
+            {
+                userEntries.Add(allEntries[i]);
+                entryNumbers.Add(i + 1); 
+            }
+        }
+
+        if (userEntries.Count == 0)
+        {
+            Console.WriteLine("No entries found for the current user.");
+            return;
+        }
+        
+        for (int i = 0; i < userEntries.Count; i++)
+        {
+            string[] entryParts = userEntries[i].Trim().Split('\n');
+            Console.WriteLine($"\nEntry #{entryNumbers[i]}");
+            Console.WriteLine($"Date: {entryParts[1]}");
+            Console.WriteLine("Content:");
+            Console.WriteLine(string.Join("\n", entryParts.Skip(2)));
+        }
+
+        Console.Write("\nEnter the number of the entry you want to delete (or type 'all' to delete all entries): ");
+        string input = Console.ReadLine()?.Trim().ToLower();
+
+        if (input == "all")
+        {
+            Console.Write("Are you sure you want to delete ALL your entries? (y/n): ");
+            string confirmAll = Console.ReadLine();
+            if (confirmAll?.ToLower() == "y")
+            {
+                var remainingEntries = allEntries.Where(entry => 
+                    !entry.Trim().StartsWith($"User:{currentUser}")).ToArray();
+                File.WriteAllText(filePath, string.Join("[ENTRY]", remainingEntries));
+                Console.WriteLine("All your entries deleted.");
+            }
+            else
+            {
+                Console.WriteLine("Action cancelled.");
+            }
+            return;
+        }
+
+        if (!int.TryParse(input, out int selectedNumber) || !entryNumbers.Contains(selectedNumber))
+        {
+            Console.WriteLine("Invalid entry number.");
+            return;
+        }
+
+        Console.Write("Are you sure you want to delete this entry? (y/n): ");
+        string confirm = Console.ReadLine();
+        if (confirm?.ToLower() != "y")
+        {
+            Console.WriteLine("Deletion cancelled.");
+            return;
+        }
+        
+        int originalIndex = selectedNumber - 1;
+        allEntries = allEntries.Where((entry, index) => index != originalIndex).ToArray();
+        File.WriteAllText(filePath, string.Join("[ENTRY]", allEntries));
+        Console.WriteLine("Entry deleted successfully.");
+    }
 }
